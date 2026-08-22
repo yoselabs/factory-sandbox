@@ -6,7 +6,7 @@ arithmetic can settle, not a reason taste can.
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 
 
 class StatsError(ValueError):
@@ -62,3 +62,21 @@ def summarise(
     into["mean"] = mean(values)
     into["median"] = median(values)
     return into
+
+
+def summarise_many(
+    samples: Mapping[str, Sequence[float]], into: MutableMapping[str, float] | None = None
+) -> MutableMapping[str, float]:
+    """Summarise several named samples into one mapping, as `<name>.mean` and `<name>.median`.
+
+    All or nothing. If any sample cannot be summarised -- an empty one raises `StatsError` -- the
+    mapping the caller passed is left exactly as it was. A half-written report is worse than no
+    report: the caller can see that an exception happened, but not which of the keys now present
+    were already there and which this call put there.
+    """
+    result: MutableMapping[str, float] = {} if into is None else into
+    for name, values in samples.items():
+        summary = summarise(values)
+        result[f"{name}.mean"] = summary["mean"]
+        result[f"{name}.median"] = summary["median"]
+    return result

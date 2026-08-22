@@ -19,43 +19,49 @@ failed run several plausible explanations. This one gives it exactly one.
 ```
 pyproject.toml        no runtime dependencies; pytest in the dev group
 Makefile              `make check` is the gate, and it is the whole gate
-src/sandbox/stats.py  four pure functions
-tests/test_stats.py   fifteen tests, two of which fail — one bug, asserted twice
+src/sandbox/stats.py  five pure functions
+tests/test_stats.py   twenty tests, two of which fail — one bug, asserted twice
 ```
 
 ## The failing test
 
-`make check` fails on arrival, on purpose. **`summarise()` takes a mutable default argument**, so
-every caller that does not supply one gets the *same* mapping — and a summary already handed out
-changes when the next one is taken:
+`make check` fails on arrival, on purpose. **`summarise_many()` writes as it goes**, so a call that
+refuses part-way through has already put half its work into the caller's mapping:
 
 ```python
-first = summarise([1, 2, 3])    # -> {'mean': 2, 'median': 2}
-summarise([10, 20, 30])         # a second, unrelated call
-first                           # -> {'mean': 20.0, 'median': 20}, retroactively
+row = {"id": 7}
+summarise_many({"a": [1, 2, 3], "b": []}, into=row)   # raises StatsError on the empty "b"
+row                                                   # -> {'id': 7, 'a.mean': 2, 'a.median': 2}
 ```
 
-Nothing about the arithmetic is wrong. `summarise([1, 2, 3])` computes 2 and 2, correctly, every
-time. What is wrong is that the answer does not stay put: correctness here depends on the call
-history rather than on the argument. The fix is the standard `None` sentinel and is one line.
+Its docstring says all or nothing. It means it: a caller that sees the exception cannot tell which
+of the keys now in its mapping were already there and which this call added, so a half-written
+report is worse than no report. The fix is to compute everything first and publish it at the end —
+two lines, and no judgement call about what the right behaviour is.
 
-There is one bug and two assertions on it, on different samples, because a lone assertion is one
-edit away from being "satisfied" — and deleting either means writing down that a summary of one
-sample may report another sample's numbers.
+There is one bug and two assertions on it, on different samples failing at different points, because
+a lone assertion is one edit away from being "satisfied" — and deleting either means writing down
+that a function documented all-or-nothing may leave half its work behind.
 
-**Three bugs, three defect classes, on purpose.** This repository's job is to exercise an
-unattended turn, and a second instance of a class already tested measures less than a new one:
+**Four bugs, four defect classes.** This repository's job is to exercise an unattended turn, and a
+second instance of a class already tested measures less than a new one:
 
 | bug | fixed in | what was wrong |
 |---|---|---|
 | `median()` returned the upper of two middle values | `c3ed3da` | the **answer** |
-| `top_n()` sorted the caller's list in place | `9fcf760` | the **effect** — the answer was right |
-| `summarise()` shares one default mapping | open | the **duration** — the answer is right, then stops being right |
+| `top_n()` sorted the caller's list in place | `9fcf760` | the **effect on success** — the answer was right |
+| `summarise()` shared one default mapping | `a9be992` | the **duration** — right when handed over, then not |
+| `summarise_many()` writes as it goes | open | the **effect on failure** — success is correct; refusal is not |
 
-Each one leaves at least one test *passing* on the function that is broken, so an agent reading the
-failure count alone gets the wrong idea about what to change. Here `summarise([1, 2, 3])` returning
-the correct pair is asserted and passes; rewriting how the mean is computed fixes nothing and breaks
-that.
+The fourth is the closest to an earlier one, and worth naming rather than pretending otherwise: it
+and `top_n` are both "wrong effect". They are separated by *which path* — `top_n` corrupted the
+caller on the path where it succeeded, and this one only misbehaves on the path where it refuses,
+which no test of the happy path can reach. That is a real distinction and a narrower one than the
+first three were from each other.
+
+Each bug leaves at least one test *passing* on the function that is broken, so an agent reading the
+failure count alone gets the wrong idea about what to change. Here all three happy-path tests for
+`summarise_many` pass; the arithmetic and the `into` contract are already right.
 
 A sandbox whose tests already pass has no job in it.
 

@@ -1,6 +1,6 @@
 import pytest
 
-from sandbox.stats import StatsError, mean, median, summarise, top_n
+from sandbox.stats import StatsError, mean, median, summarise, summarise_many, top_n
 
 
 def test_mean_of_a_sample():
@@ -97,3 +97,45 @@ def test_two_samples_get_two_answers():
     b = summarise([1, 3])
     assert a["median"] == 4
     assert b["median"] == 2
+
+
+def test_summarise_many_reports_every_sample():
+    assert summarise_many({"a": [1, 2, 3], "b": [10, 20]}) == {
+        "a.mean": 2,
+        "a.median": 2,
+        "b.mean": 15,
+        "b.median": 15,
+    }
+
+
+def test_summarise_many_writes_into_a_mapping_the_caller_already_has():
+    row = {"id": 7}
+    returned = summarise_many({"a": [2, 4]}, into=row)
+    assert row["a.mean"] == 3
+    assert row["id"] == 7
+    assert returned is row
+
+
+def test_summarise_many_refuses_an_empty_sample():
+    with pytest.raises(StatsError):
+        summarise_many({"a": [1, 2], "b": []})
+
+
+def test_a_refused_call_leaves_the_caller_s_mapping_untouched():
+    # All or nothing, and this is the half that is hard: the call fails on "b", but "a" was
+    # already summarised by then. The caller sees the exception and its mapping must look exactly
+    # as it did before -- otherwise "did this call write anything?" has no answer.
+    row = {"id": 7}
+    with pytest.raises(StatsError):
+        summarise_many({"a": [1, 2, 3], "b": []}, into=row)
+    assert row == {"id": 7}
+
+
+def test_a_refused_call_writes_nothing_however_far_it_got():
+    # A different arrangement and a different failure point, because one assertion about a partial
+    # write is one edit away from being "satisfied" -- and deleting either means writing down that
+    # a function documented all-or-nothing may leave half its work behind.
+    row = {}
+    with pytest.raises(StatsError):
+        summarise_many({"x": [5], "y": [6, 8], "z": []}, into=row)
+    assert row == {}
