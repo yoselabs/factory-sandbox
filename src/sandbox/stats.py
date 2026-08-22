@@ -29,4 +29,7 @@ def median(values: Sequence[float]) -> float:
     if not values:
         raise StatsError("median of an empty sequence is undefined")
     ordered = sorted(values)
-    return ordered[len(ordered) // 2]
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2
