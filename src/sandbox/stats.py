@@ -74,9 +74,11 @@ def summarise_many(
     report: the caller can see that an exception happened, but not which of the keys now present
     were already there and which this call put there.
     """
-    result: MutableMapping[str, float] = {} if into is None else into
+    computed: dict[str, float] = {}
     for name, values in samples.items():
         summary = summarise(values)
-        result[f"{name}.mean"] = summary["mean"]
-        result[f"{name}.median"] = summary["median"]
+        computed[f"{name}.mean"] = summary["mean"]
+        computed[f"{name}.median"] = summary["median"]
+    result: MutableMapping[str, float] = {} if into is None else into
+    result.update(computed)
     return result
