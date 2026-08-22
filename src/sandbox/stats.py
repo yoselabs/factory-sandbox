@@ -6,7 +6,7 @@ arithmetic can settle, not a reason taste can.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
 
 
 class StatsError(ValueError):
@@ -46,3 +46,15 @@ def top_n(values: Sequence[float], n: int) -> list[float]:
         raise StatsError("cannot take a negative number of values")
     ordered = sorted(values, reverse=True)
     return ordered[:n]
+
+
+def summarise(values: Sequence[float], into: MutableMapping[str, float] = {}) -> MutableMapping[str, float]:
+    """Mean and median of `values`, written into `into` and returned.
+
+    `into` exists so a caller that already has a mapping can have the numbers written straight
+    into it -- a report being assembled, a row being built -- rather than getting a new mapping
+    back and merging it by hand. Called without one, you get a mapping of your own.
+    """
+    into["mean"] = mean(values)
+    into["median"] = median(values)
+    return into

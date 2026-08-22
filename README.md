@@ -19,35 +19,43 @@ failed run several plausible explanations. This one gives it exactly one.
 ```
 pyproject.toml        no runtime dependencies; pytest in the dev group
 Makefile              `make check` is the gate, and it is the whole gate
-src/sandbox/stats.py  three pure functions
-tests/test_stats.py   eleven tests, two of which fail — one bug, asserted twice
+src/sandbox/stats.py  four pure functions
+tests/test_stats.py   fifteen tests, two of which fail — one bug, asserted twice
 ```
 
 ## The failing test
 
-`make check` fails on arrival, on purpose. **`top_n()` sorts its argument in place**, so it hands
-back the right answer and leaves the caller's list rearranged behind it:
+`make check` fails on arrival, on purpose. **`summarise()` takes a mutable default argument**, so
+every caller that does not supply one gets the *same* mapping — and a summary already handed out
+changes when the next one is taken:
 
 ```python
-sample = [4, 1, 3, 2]
-top_n(sample, 2)     # -> [4, 3], which is correct
-sample               # -> [4, 3, 2, 1], which is not what the caller passed in
+first = summarise([1, 2, 3])    # -> {'mean': 2, 'median': 2}
+summarise([10, 20, 30])         # a second, unrelated call
+first                           # -> {'mean': 20.0, 'median': 20}, retroactively
 ```
 
-The first line of `stats.py` says these are pure functions. A function that reorders its argument is
-not one, and the caller still owns that list. The fix is one line; nothing about it is a matter of
-taste.
+Nothing about the arithmetic is wrong. `summarise([1, 2, 3])` computes 2 and 2, correctly, every
+time. What is wrong is that the answer does not stay put: correctness here depends on the call
+history rather than on the argument. The fix is the standard `None` sentinel and is one line.
 
-There is one bug and two assertions on it, on different samples and different `n`, because a lone
-assertion is one edit away from being "satisfied" — and deleting either of these means writing down
-that a function documented as pure may rearrange its caller's data.
+There is one bug and two assertions on it, on different samples, because a lone assertion is one
+edit away from being "satisfied" — and deleting either means writing down that a summary of one
+sample may report another sample's numbers.
 
-**Note what does *not* fail.** `test_top_n_returns_the_largest_values` passes with the bug in place,
-because the return value was never wrong. That is deliberate: the first bug this repository carried
-(`median()` returning the upper of two middle values, fixed in `c3ed3da`) was a wrong *answer*, and
-a second bug of the same shape would test less than a different one. This one is a wrong *effect*.
-An agent that only reads the failure count sees "two tests failing in `top_n`" and can still get it
-backwards by rewriting the arithmetic that was already correct.
+**Three bugs, three defect classes, on purpose.** This repository's job is to exercise an
+unattended turn, and a second instance of a class already tested measures less than a new one:
+
+| bug | fixed in | what was wrong |
+|---|---|---|
+| `median()` returned the upper of two middle values | `c3ed3da` | the **answer** |
+| `top_n()` sorted the caller's list in place | `9fcf760` | the **effect** — the answer was right |
+| `summarise()` shares one default mapping | open | the **duration** — the answer is right, then stops being right |
+
+Each one leaves at least one test *passing* on the function that is broken, so an agent reading the
+failure count alone gets the wrong idea about what to change. Here `summarise([1, 2, 3])` returning
+the correct pair is asserted and passes; rewriting how the mean is computed fixes nothing and breaks
+that.
 
 A sandbox whose tests already pass has no job in it.
 

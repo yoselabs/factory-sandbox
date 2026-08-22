@@ -1,6 +1,6 @@
 import pytest
 
-from sandbox.stats import StatsError, mean, median, top_n
+from sandbox.stats import StatsError, mean, median, summarise, top_n
 
 
 def test_mean_of_a_sample():
@@ -62,3 +62,38 @@ def test_top_n_does_not_reorder_a_second_sample_either():
     sample = [7, 2, 9]
     assert top_n(sample, 1) == [9]
     assert sample == [7, 2, 9]
+
+
+def test_summarise_reports_the_mean_and_the_median():
+    assert summarise([1, 2, 3]) == {"mean": 2, "median": 2}
+
+
+def test_summarise_writes_into_a_mapping_the_caller_already_has():
+    row = {"id": 7}
+    returned = summarise([2, 4], into=row)
+    # The caller's own mapping is what gets the numbers -- that is the whole point of the
+    # parameter. Building a copy and leaving `row` untouched would not be this function.
+    assert row["mean"] == 3
+    assert row["median"] == 3
+    assert row["id"] == 7
+    assert returned is row
+
+
+def test_a_summary_does_not_change_when_a_later_summary_is_taken():
+    # A value you have already been handed does not change afterwards. `first` summarises
+    # [1, 2, 3] and its mean is 2 -- before the second call, after the second call, and for as
+    # long as the caller holds it.
+    first = summarise([1, 2, 3])
+    summarise([10, 20, 30])
+    assert first["mean"] == 2
+
+
+def test_two_samples_get_two_answers():
+    # Different samples, different medians: [4, 4] has median 4, [1, 3] has median 2. Asserted
+    # separately from the test above, on different numbers, because one assertion about leaked
+    # state is one edit away from being "satisfied" -- and deleting either means writing down
+    # that a summary of one sample may report another sample's numbers.
+    a = summarise([4, 4])
+    b = summarise([1, 3])
+    assert a["median"] == 4
+    assert b["median"] == 2
