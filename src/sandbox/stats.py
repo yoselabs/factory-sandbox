@@ -44,5 +44,5 @@ def top_n(values: Sequence[float], n: int) -> list[float]:
     """
     if n < 0:
         raise StatsError("cannot take a negative number of values")
-    values.sort(reverse=True)
-    return values[:n]
+    ordered = sorted(values, reverse=True)
+    return ordered[:n]
