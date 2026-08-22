@@ -33,3 +33,16 @@ def median(values: Sequence[float]) -> float:
     if len(ordered) % 2:
         return ordered[mid]
     return (ordered[mid - 1] + ordered[mid]) / 2
+
+
+def top_n(values: Sequence[float], n: int) -> list[float]:
+    """The `n` largest values, largest first.
+
+    Fewer than `n` values in the sample means all of them, in order. `n == 0` is an empty list,
+    not an error -- "give me nothing" is a question with an answer. A negative `n` is refused,
+    because there is no sample it could describe.
+    """
+    if n < 0:
+        raise StatsError("cannot take a negative number of values")
+    values.sort(reverse=True)
+    return values[:n]

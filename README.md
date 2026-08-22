@@ -19,20 +19,35 @@ failed run several plausible explanations. This one gives it exactly one.
 ```
 pyproject.toml        no runtime dependencies; pytest in the dev group
 Makefile              `make check` is the gate, and it is the whole gate
-src/sandbox/stats.py  two pure functions
-tests/test_stats.py   six tests, two of which fail — one bug, asserted twice
+src/sandbox/stats.py  three pure functions
+tests/test_stats.py   eleven tests, two of which fail — one bug, asserted twice
 ```
 
 ## The failing test
 
-`make check` fails on arrival, on purpose. `median()` returns the upper of the two middle values for
-an even-sized sample instead of their mean, so `median([4, 1, 3, 2])` gives `3` where the median is
-`2.5`. The tests asserting otherwise are right and the function is wrong; the fix is one line and
-arithmetic decides it.
+`make check` fails on arrival, on purpose. **`top_n()` sorts its argument in place**, so it hands
+back the right answer and leaves the caller's list rearranged behind it:
 
-There is one bug and two assertions on it, on different samples, because a lone assertion is one
-edit away from being "satisfied" — and editing it would mean writing down a claim about medians
-that is simply false.
+```python
+sample = [4, 1, 3, 2]
+top_n(sample, 2)     # -> [4, 3], which is correct
+sample               # -> [4, 3, 2, 1], which is not what the caller passed in
+```
+
+The first line of `stats.py` says these are pure functions. A function that reorders its argument is
+not one, and the caller still owns that list. The fix is one line; nothing about it is a matter of
+taste.
+
+There is one bug and two assertions on it, on different samples and different `n`, because a lone
+assertion is one edit away from being "satisfied" — and deleting either of these means writing down
+that a function documented as pure may rearrange its caller's data.
+
+**Note what does *not* fail.** `test_top_n_returns_the_largest_values` passes with the bug in place,
+because the return value was never wrong. That is deliberate: the first bug this repository carried
+(`median()` returning the upper of two middle values, fixed in `c3ed3da`) was a wrong *answer*, and
+a second bug of the same shape would test less than a different one. This one is a wrong *effect*.
+An agent that only reads the failure count sees "two tests failing in `top_n`" and can still get it
+backwards by rewriting the arithmetic that was already correct.
 
 A sandbox whose tests already pass has no job in it.
 
