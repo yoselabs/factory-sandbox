@@ -14,7 +14,7 @@ class StatsError(ValueError):
 
 
 def mean(values: Sequence[float]) -> float:
-    """The arithmetic mean."""
+    """The arithmetic mean: the sum of `values` divided by their count."""
     if not values:
         raise StatsError("mean of an empty sequence is undefined")
     return sum(values) / len(values)
