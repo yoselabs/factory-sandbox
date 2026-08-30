@@ -1,8 +1,7 @@
 {
   "_readme": [
-    "WORKSPACE CONFIGURATION. This is the live copy for this repository.",
-    "WORKSPACE repository as `.factory/config.json`, on that repository's DEFAULT BRANCH, and edit",
-    "`users.allowed`. See `templates/README.md` in `yoselabs/factory-state`.",
+    "WORKSPACE CONFIGURATION. This is the live copy for this repository, and it counts only on the",
+    "default branch. See `templates/README.md` in `yoselabs/factory-state` for what belongs here.",
     "",
     "WHY JSON. Two readers have to agree on this file and neither may install anything:",
     "`.github/workflows/signal-the-factory.yml` reads it in bash (jq, preinstalled on every hosted",
